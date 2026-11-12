@@ -1,0 +1,11 @@
+{
+  "name": "task-manager-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Task assignment and monitoring app with Sinhala voice updates (Google Apps Script + GitHub Pages)",
+  "scripts": {
+    "test": "node --test tests/core.test.js tests/sync.test.js",
+    "sync": "node tools/sync-core.js"
+  },
+  "engines": { "node": ">=20" }
+}

@@ -1,42 +1,65 @@
-# Task Assigning & Monitoring App - Phase 0 Prototype
+# Task Manager - assign, follow and archive work (with Sinhala voice updates)
 
-Goal of this prototype: prove two risky things before building the full app.
-1. The microphone records on your real phones / tablets / desktops.
-2. Gemini understands your people's Sinhala voice notes and gives a useful task summary.
+A small internal app for a management team of about 20 people.
 
-## Layout
-- `backend/Code.gs`  - Google Apps Script API (holds the Gemini key; never put the key in `docs/`)
-- `docs/index.html`  - test page, hosted free on GitHub Pages (must be in `docs/` for Pages)
+- Managers assign a task to one or **several people** below them. Everyone on the task shares **one conversation**.
+- People answer by **text or voice message** (Sinhala, English or mixed). Voice is transcribed by AI.
+- Assignees drag a **progress slider**. At 100% the task waits for the manager's **Agree** (or "send back").
+- An **AI summary** tells the manager where the task stands, based on the conversation.
+- Approved tasks move to **History** (start date, completion date, full conversation, voice files).
+- An **admin** creates job titles, accounts and draws the **org chart**: arrows decide who may assign tasks to whom.
 
-## Setup (about 15 minutes)
+**Try it without any setup:** open the site with `?demo=1` (fake company, everything stays in your browser).
 
-### A. Gemini key (free)
-1. Open https://aistudio.google.com/apikey and create an API key.
+## How it is built
 
-### B. Backend on Apps Script
-1. Go to https://script.google.com > New project. Paste all of `backend/Code.gs` over the default code. Save.
-2. Project Settings (gear icon) > Script properties > add:
-   - `GEMINI_API_KEY` = your key
-   - `PROTO_PASSCODE` = any passphrase you invent
-   - `GEMINI_MODEL` = optional; set it to the current Flash model name in AI Studio if the default (`gemini-2.5-flash`) errors
-3. Deploy > New deployment > type **Web app**:
-   - Execute as: **Me**
-   - Who has access: **Anyone**
-   Approve the permission prompts, then copy the **Web app URL** (ends with `/exec`).
-4. After any later code change: Deploy > Manage deployments > edit > Version: New version.
+```
+Browser (GitHub Pages, plain HTML/CSS/JS)  --POST JSON-->  Google Apps Script web app
+                                                           |-- Core.gs      business logic (pure JS, tested)
+                                                           |-- Adapters.gs  Sheets (database), Drive (voice + archive), Gemini (AI)
+                                                           '-- Setup.gs     one-time setup, backups, smoke test
+```
 
-### C. Front end on GitHub Pages
-1. Create a new **public** GitHub repo and upload this project (at least the `docs/` folder).
-2. Repo Settings > Pages > Source: "Deploy from a branch", branch `main`, folder `/docs`.
-3. Open the Pages URL it shows (https://<user>.github.io/<repo>/) on each device type.
-4. In the page, paste the Apps Script URL and the passcode, press Save, then Test connection.
+| Piece | Where | Why |
+|---|---|---|
+| Business rules, permissions, task state machine | `backend/Core.gs` | One file used by the real backend, the browser demo and the tests |
+| Google adapters | `backend/Adapters.gs` | Swap Sheets/Drive/Gemini without touching the rules |
+| Web app | `docs/` | Served by GitHub Pages |
+| In-browser demo | `docs/js/demo.js`, `docs/js/memory-env.js` | Fake data, same logic |
+| Tests | `tests/` | `npm test` (Node 20+, no dependencies) |
 
-## What to test (record the results)
-- Does "Start recording" work on: Android phone, iPhone, tablet, Windows desktop?
-- Record 10-15 real Sinhala voice notes (quiet, noisy, mixed Sinhala + English words). Is the transcript right?
-- Add 4-6 messages as Manager/Worker, press Summarize task. Is the summary accurate and useful?
+Free to run: Google Apps Script + Sheets + Drive + Gemini free tier + GitHub Pages.
 
-## Notes
-- The repo is public, so the front end code is public. That is fine: secrets live only in Apps Script properties.
-- Free-tier Gemini may use content to improve Google models; use test recordings, not sensitive ones, for now.
-- This prototype is protected only by a shared passcode. The real app will have per-user accounts.
+### Rules the code enforces (see `tests/core.test.js`)
+- Sign-in with own username/password (salted, iterated hashes; lock-out after 5 wrong attempts; forced change of temporary passwords).
+- A person can only assign tasks to people their **arrows** (tethers) point to, and arrows only point **down** the pyramid. Skipping layers is allowed.
+- Admins manage accounts and the org chart but **cannot read other people's tasks**.
+- Only assignees move the slider; only the person who assigned the task can approve or send it back.
+- Closed tasks are written to the archive first, then removed from the live sheet (the sheet stays small).
+- Every column in the database is stored as plain text, so user input can never run as a spreadsheet formula.
+
+## Deploy your own
+
+1. **Google account** that will own the app (use a dedicated account, not a personal one). Create a Gemini API key at <https://aistudio.google.com/apikey>.
+2. **Apps Script**: new project at <https://script.google.com>. Create four files and paste `backend/Core.gs`, `Adapters.gs`, `Code.gs`, `Setup.gs`.
+3. **Script properties** (Project Settings): `GEMINI_API_KEY`, `SETUP_COMPANY_NAME`, `SETUP_ADMIN_USERNAME`, `SETUP_ADMIN_PASSWORD` (optional `SETUP_ADMIN_NAME`).
+4. Run `setup()` (approve the permission prompts). Then `installTriggers()` and `smokeTest()` (it must end with `ALL SMOKE TESTS PASSED`).
+5. **Deploy > New deployment > Web app**: Execute as *Me*, access *Anyone* (every call needs a login). Copy the `/exec` URL.
+6. Put the URL in `docs/js/config.js` (`backendUrl`) and publish `docs/` with GitHub Pages.
+7. Open the site, sign in as the admin, set a new password, then create job titles, users and the org chart.
+
+After changing backend code: Deploy > Manage deployments > edit > **New version**.
+
+## Developing
+
+```bash
+npm test                 # run all tests
+node tools/sync-core.js  # after editing backend/Core.gs, refresh docs/js/core.js (a test checks this)
+python -m http.server 8765 --directory docs   # then open http://localhost:8765/?demo=1
+```
+
+## Known limits
+- Google Sheets is the database: fine for dozens of users, not thousands. Closed tasks leave the sheet, which keeps it small.
+- No push notifications (the app polls while open). Unread dots and a badge show new messages.
+- Free Gemini tier can be slow or busy; the backend tries several models and reports clearly when the AI is unavailable. Free-tier content may be used by Google to improve its models: use a paid key if that matters.
+- Voice messages are limited to 2 minutes. Voice playback needs a browser that can play the format it was recorded in (any current phone or desktop browser).
