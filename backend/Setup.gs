@@ -123,7 +123,8 @@ function smokeTest() {
     const hist = must('listHistory', staff1, {});
     check(hist.total === 1, 'closed task appears in history');
     const doc = must('getArchived', staff1, { taskId: task.id });
-    check(doc.messages.length >= 4 + risky.length && doc.task.title === 'Smoke task', 'archived conversation can be opened from Drive');
+    // created (system) + risky texts + voice + progress (system) = 3 + risky.length
+    check(doc.messages.length === 3 + risky.length && doc.task.title === 'Smoke task', 'archived conversation (' + doc.messages.length + ' messages) can be opened from Drive');
     check(must('getAudio', staff1, { archived: true, taskId: task.id, messageId: v.message.id }).b64 === fake, 'voice file still playable after archiving');
     check(call('getArchived', admin, { taskId: task.id }).ok === false, 'admin cannot read other people\'s archived tasks');
   } finally {
