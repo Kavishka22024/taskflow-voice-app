@@ -55,7 +55,7 @@ function lock_(fn) {
 }
 
 /* ============================== Sheets database ============================== */
-// Every column is stored as TEXT (number format "@"), so user input starting with "=" can never run as a formula.
+// Every column is stored as TEXT (number format "@") and risky text is guarded in serialize() (see SECURITY note there).
 // Types are restored on read using the schema in Core.gs (TABLES).
 
 function SheetsStore_(ssId) {
@@ -98,10 +98,15 @@ SheetsStore_.prototype.parse = function (type, v) {
   return v == null ? '' : String(v);
 };
 SheetsStore_.prototype.serialize = function (type, v) {
-  if (type === 'j') return v == null ? '' : JSON.stringify(v);
-  if (type === 'b') return v ? 'TRUE' : 'FALSE';
-  if (type === 'n') return String(Number(v) || 0);
-  return String(v == null ? '' : v);
+  let s;
+  if (type === 'j') s = v == null ? '' : JSON.stringify(v);
+  else if (type === 'b') s = v ? 'TRUE' : 'FALSE';
+  else if (type === 'n') s = String(Number(v) || 0);
+  else s = String(v == null ? '' : v);
+  // SECURITY: Sheets evaluates text beginning with = + - @ as a formula even in cells formatted as plain text
+  // (verified on a real sheet; a "text" number format alone does NOT protect). A leading apostrophe forces plain
+  // text and is not part of the stored value. Text that already starts with an apostrophe gets one more.
+  return /^[=+\-@']/.test(s) ? "'" + s : s;
 };
 SheetsStore_.prototype.toRow = function (name, obj) {
   const self = this, spec = TABLES[name].cols;

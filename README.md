@@ -36,7 +36,7 @@ Free to run: Google Apps Script + Sheets + Drive + Gemini free tier + GitHub Pag
 - Admins manage accounts and the org chart but **cannot read other people's tasks**.
 - Only assignees move the slider; only the person who assigned the task can approve or send it back.
 - Closed tasks are written to the archive first, then removed from the live sheet (the sheet stays small).
-- Every column in the database is stored as plain text, so user input can never run as a spreadsheet formula.
+- Text typed by users can never run as a spreadsheet formula. (A plain-text cell format is *not* enough: Google Sheets still evaluates `=...` there. The Sheets adapter prefixes risky text with an apostrophe, and `smokeTest()` checks this on a real sheet.)
 
 ## Deploy your own
 

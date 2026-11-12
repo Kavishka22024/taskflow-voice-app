@@ -107,9 +107,12 @@ function smokeTest() {
 
     check(call('createTask', staff1, { title: 'x', assigneeIds: [u1.user.id] }).code === 'FORBIDDEN', 'worker cannot assign upwards');
     const task = must('createTask', boss1, { title: 'Smoke task', description: 'd', assigneeIds: [u2.user.id] }).task;
-    must('postMessage', staff1, { taskId: task.id, text: '=1+1' });
+    const risky = ['=1+1', '=IMPORTRANGE("x","y")', '+1+1', '-5', '@SUM(1)', "'quoted", "''two", 'normal text', '2026-12-31', '  spaced  '.trim()];
+    risky.forEach(function (t) { must('postMessage', staff1, { taskId: task.id, text: t }); });
     const msgs = must('getTask', boss1, { taskId: task.id }).messages;
-    check(msgs.some(function (m) { return m.text === '=1+1'; }), 'text starting with "=" is stored as text, not a formula');
+    risky.forEach(function (t) {
+      check(msgs.some(function (m) { return m.text === t; }), 'text "' + t + '" is stored exactly as typed (never evaluated as a formula)');
+    });
     const fake = Utilities.base64Encode('not-really-audio');
     const v = must('postVoice', staff1, { taskId: task.id, audioB64: fake, wavB64: fake, mime: 'audio/webm', secs: 3 });
     check(v.message.status === 'ok' && v.message.transcript === 'වැඩේ අවසන්', 'voice message saved and transcribed (Sinhala text survives the sheet)');
@@ -120,7 +123,7 @@ function smokeTest() {
     const hist = must('listHistory', staff1, {});
     check(hist.total === 1, 'closed task appears in history');
     const doc = must('getArchived', staff1, { taskId: task.id });
-    check(doc.messages.length >= 4 && doc.task.title === 'Smoke task', 'archived conversation can be opened from Drive');
+    check(doc.messages.length >= 4 + risky.length && doc.task.title === 'Smoke task', 'archived conversation can be opened from Drive');
     check(must('getAudio', staff1, { archived: true, taskId: task.id, messageId: v.message.id }).b64 === fake, 'voice file still playable after archiving');
     check(call('getArchived', admin, { taskId: task.id }).ok === false, 'admin cannot read other people\'s archived tasks');
   } finally {
