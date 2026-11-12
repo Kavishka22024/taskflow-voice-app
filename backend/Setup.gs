@@ -10,14 +10,19 @@
  *   nightlyJob()      What the trigger runs (backup + remove expired sessions). Safe to run by hand.
  *
  * Before setup(), add these Script properties (Project Settings > Script properties):
- *   GEMINI_API_KEY, SETUP_COMPANY_NAME, SETUP_ADMIN_USERNAME, SETUP_ADMIN_PASSWORD, (optional) SETUP_ADMIN_NAME
- * setup() deletes SETUP_ADMIN_PASSWORD afterwards. The admin must change that password at first login.
+ *   GEMINI_API_KEY, SETUP_COMPANY_NAME, SETUP_ADMIN_USERNAME, (optional) SETUP_ADMIN_NAME,
+ *   (optional) SETUP_ADMIN_PASSWORD - if you leave it out, setup() generates a random temporary password
+ *   and prints it ONCE in the execution log. Either way the admin must change it at first sign-in.
+ * To rename the company later: change SETUP_COMPANY_NAME and run setup() again (it will not create a second admin).
  */
 
 function setup() {
   const props = PropertiesService.getScriptProperties();
-  const need = ['SETUP_COMPANY_NAME', 'SETUP_ADMIN_USERNAME', 'SETUP_ADMIN_PASSWORD'];
+  const need = ['SETUP_COMPANY_NAME', 'SETUP_ADMIN_USERNAME'];
   need.forEach(function (k) { if (!props.getProperty(k)) throw new Error('Add the Script property ' + k + ' first (see the comment at the top of Setup.gs).'); });
+  // No password supplied? Generate a random temporary one and show it ONCE in the execution log.
+  let generated = '';
+  if (!props.getProperty('SETUP_ADMIN_PASSWORD')) { generated = generatePassword_(); props.setProperty('SETUP_ADMIN_PASSWORD', generated); }
 
   // 1. Drive folders: TaskApp / {Voice, Archive, Backups}
   if (!props.getProperty('ROOT_FOLDER_ID')) props.setProperty('ROOT_FOLDER_ID', DriveApp.createFolder('TaskApp (' + props.getProperty('SETUP_COMPANY_NAME') + ')').getId());
@@ -43,9 +48,20 @@ function setup() {
   if (result.createdAdmin) props.deleteProperty('SETUP_ADMIN_PASSWORD');
 
   Logger.log('Setup finished: ' + JSON.stringify(result));
+  if (generated && result.createdAdmin) {
+    Logger.log('FIRST SIGN-IN  username: ' + props.getProperty('SETUP_ADMIN_USERNAME').toLowerCase() + '   temporary password: ' + generated + '   (shown only now; you must choose a new password at first sign-in)');
+  }
   Logger.log('Database: ' + SpreadsheetApp.openById(props.getProperty('SPREADSHEET_ID')).getUrl());
   Logger.log('Drive folder: ' + root.getUrl());
   Logger.log('Now run installTriggers(), then smokeTest().');
+}
+
+function generatePassword_() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const hex = (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '');
+  let out = '';
+  for (let i = 0; i < 12; i++) { out += alphabet[parseInt(hex.substr(i * 2, 2), 16) % alphabet.length]; if (i === 3 || i === 7) out += '-'; }
+  return out;
 }
 
 function installTriggers() {
