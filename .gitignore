@@ -1,0 +1,28 @@
+# Company-specific files - must never go into the public showcase repo
+HANDOVER.md
+config.local.js
+config.company.js
+*.company.*
+
+# Secrets
+.env
+.env.*
+*.key
+*.pem
+secrets/
+
+# Real data and recordings (use fake demo data only)
+data/
+exports/
+backups/
+*.wav
+*.webm
+*.m4a
+*.mp3
+
+# Local tooling
+.clasp.json
+.clasprc.json
+node_modules/
+.DS_Store
+Thumbs.db
