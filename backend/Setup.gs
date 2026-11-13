@@ -145,7 +145,10 @@ function smokeTest() {
     check(call('getArchived', admin, { taskId: task.id }).ok === false, 'admin cannot read other people\'s archived tasks');
 
     // profiles: picture + bio. First simulate a spreadsheet made before profiles existed (no Profiles sheet).
-    ss.deleteSheet(ss.getSheetByName('Profiles'));
+    const ssNow = SpreadsheetApp.openById(ss.getId());       // a fresh handle: the one from create() may not list sheets added since
+    const profSheet = ssNow.getSheetByName('Profiles');
+    check(!!profSheet, 'setup created the Profiles sheet');
+    if (profSheet) ssNow.deleteSheet(profSheet);
     check(must('profiles', boss1, {}).profiles.length === 0, 'a spreadsheet without a Profiles sheet gets one on first use');
     const jpeg = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
     must('saveProfile', staff1, { bio: '=SUM(1)', photo: jpeg });
