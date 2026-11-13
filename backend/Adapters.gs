@@ -422,7 +422,7 @@ GeminiAi_.prototype.assistant = function (input) {
   // SPEED: no long "thinking" phase, and for typed questions the small fast model first (it answers in about a second or two).
   // Spoken questions go to the main model first because understanding accents is harder.
   const main = prop_('GEMINI_MODEL') || DEFAULT_MODEL, fast = prop_('GEMINI_FAST_MODEL') || FALLBACK_MODELS[0];
-  return callGemini_(system, null, { contents: contents, temperature: 0.3, quick: true, models: input.audio ? [main, fast] : [fast, main] });
+  return callGemini_(system, null, { contents: contents, temperature: 0.3, quick: true, models: input.audio && prop_('ASSISTANT_AUDIO_MODEL') !== 'fast' ? [main, fast] : [fast, main] });   // ASSISTANT_AUDIO_MODEL = fast: spoken questions also go to the fast model first
 };
 
 /* ---- natural-sounding voice (Gemini speech model, same free key) ---- */
