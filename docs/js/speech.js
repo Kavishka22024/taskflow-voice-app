@@ -54,6 +54,7 @@
   /* ---------- the natural voice ---------- */
   // The backend sends raw 16-bit PCM; wrap it so an <audio> element can play it.
   function pcmUrl(b64, mime) {
+    if (/^UklGR/.test(b64)) { const raw = atob(b64), u8 = new Uint8Array(raw.length); for (let i = 0; i < raw.length; i++) u8[i] = raw.charCodeAt(i); return URL.createObjectURL(new Blob([u8], { type: 'audio/wav' })); }   // already a WAV file
     const rate = Number((/rate=(\d+)/.exec(mime || '') || [])[1]) || 24000;
     const bin = atob(b64), n = bin.length, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
     const str = function (o, s) { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
@@ -100,7 +101,8 @@
       const my = ++gen; speaking = true;
       const useNatural = Speech.natural() && w.Api && w.Api.token && !w.Api.demo && Date.now() > failUntil;
       if (!useNatural) { if (o.onstart) o.onstart(); return browserSpeak(sentences(plain, 170), my, o); }
-      const parts = sentences(plain, 150), jobs = [];
+      // the first sentence alone (so it starts as soon as possible), then the rest in chunks
+      const firstMatch = /^.*?[.!?](?=\s|$)/.exec(plain), first = firstMatch ? firstMatch[0] : plain, parts = [first].concat(sentences(plain.slice(first.length).trim(), 150).filter(Boolean)), jobs = [];
       const job = function (i) { if (i < parts.length && !jobs[i]) { jobs[i] = fetchPart(parts[i]); jobs[i].catch(function () { /* handled when its turn comes */ }); } return jobs[i]; };
       (async function () {
         let started = false;
