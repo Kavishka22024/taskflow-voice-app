@@ -511,3 +511,25 @@ function mockClean() {
   props.deleteProperty('MOCK_STATE');
   Logger.log('Mock data removed: ' + JSON.stringify(out) + '. Drive folders and files went to the Drive trash.');
 }
+
+// speedTest()  Times the assistant on your real data (as the first active person, without changing anything): whole request, the model
+//              call alone, typed and spoken, so we can see where the waiting goes. Writes nothing.
+function speedTest() {
+  const real = new GeminiAi_(), env = makeEnv_({ ai: real }), core = createCore(env); env.store.init(core.TABLES);
+  const realAll = env.store.all.bind(env.store);
+  const me = realAll('Users').filter(function (u) { return u.active && !u.isAdmin; })[0], tok = 'speed-' + Utilities.getUuid();
+  const virtual = [{ tokenHash: env.sha256Hex('token:' + tok), userId: me.id, expires: 9e15, createdAt: 0, lastSeen: 9e15 }];
+  env.store.all = function (name) { const rows = realAll(name); if (name === 'Users') return rows.map(function (u) { return Object.assign({}, u, { mustChange: false }); }); if (name === 'Sessions') return rows.concat(virtual); return rows; };
+  const run = function (label, req) {
+    GEMINI_LOG_.length = 0; const a = Date.now(), r = core.handle(Object.assign({ action: 'assistant', token: tok, history: [] }, req)), total = Date.now() - a;
+    const model = GEMINI_LOG_.reduce(function (n, x) { return n + x.ms; }, 0);
+    Logger.log(label + ': total ' + total + ' ms = model ' + model + ' ms + the rest ' + (total - model) + ' ms | calls ' + JSON.stringify(GEMINI_LOG_) + ' | ' + (r.ok ? String(r.data.reply).slice(0, 90) : r.error));
+  };
+  Logger.log('Asking as ' + me.name);
+  run('typed 1', { text: 'What needs my attention today?' });
+  run('typed 2', { text: 'Who is behind schedule?' });
+  const v = real.speak('What needs my attention today?');
+  Logger.log('(speech sample ready: ' + v.b64.length + ' chars)');
+  run('spoken (the model order from ASSISTANT_AUDIO_MODEL = ' + (prop_('ASSISTANT_AUDIO_MODEL') || 'main') + ')', { wavB64: v.b64 });
+  run('spoken again', { wavB64: v.b64 });
+}
