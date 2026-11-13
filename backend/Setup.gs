@@ -235,3 +235,17 @@ function listModels() {
     .filter(function (x) { return (x.supportedGenerationMethods || []).indexOf('generateContent') >= 0; })
     .map(function (x) { return x.name.replace('models/', ''); }).join('\n'));
 }
+
+/* ============================== MOCK DATA (for trying the app before real use) ============================== */
+// mockInspect()  Shows who is in the system (names, job titles, arrows, task counts). Changes nothing.
+function mockInspect() {
+  const env = makeEnv_({});
+  const core = createCore(env);
+  core.TABLES && env.store.init(core.TABLES);
+  const users = env.store.all('Users'), titles = env.store.all('JobTitles'), links = env.store.all('Links');
+  const t = {}; titles.forEach(function (x) { t[x.id] = x.title + ' (layer ' + x.level + ')'; });
+  const u = {}; users.forEach(function (x) { u[x.id] = x.name; });
+  Logger.log('USERS (' + users.length + '):\n' + users.map(function (x) { return '- ' + x.name + ' | ' + x.username + ' | ' + (t[x.jobTitleId] || 'no title') + ' | ' + (x.active ? 'active' : 'inactive') + (x.isAdmin ? ' | admin' : '') + (x.mustChange ? ' | has NOT changed the first password yet' : ''); }).join('\n'));
+  Logger.log('ARROWS (' + links.length + '):\n' + links.map(function (l) { return u[l.fromId] + ' -> ' + u[l.toId]; }).join('\n'));
+  Logger.log('TASKS: open ' + env.store.all('Tasks').length + ', completed ' + env.store.all('ArchiveIndex').length + ', messages ' + env.store.all('Messages').length);
+}
