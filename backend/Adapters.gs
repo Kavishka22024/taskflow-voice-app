@@ -10,6 +10,7 @@
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models/';
 const DEFAULT_MODEL = 'gemini-3.5-flash';
 const FALLBACK_MODELS = ['gemini-3.1-flash-lite', 'gemini-flash-latest']; // tried when the main model is busy (429/500/503) or gone (404)
+const GEMINI_LOG_ = [];                                                   // timing of the latest model calls in this run
 const MAX_AI_SECONDS = 90;                                                // stop trying more models after this long
 const PASSWORD_ROUNDS = 200;                                              // hash strength for NEW passwords (old ones keep theirs)
 
@@ -504,7 +505,10 @@ function callGemini_(systemText, parts, opts) {
   const started = Date.now();
   let lastError = 'No model was tried';
   const send = function (model, body) {
-    return UrlFetchApp.fetch(GEMINI_BASE + model + ':generateContent', { method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key }, payload: JSON.stringify(body), muteHttpExceptions: true });
+    const t0 = Date.now();
+    const r = UrlFetchApp.fetch(GEMINI_BASE + model + ':generateContent', { method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key }, payload: JSON.stringify(body), muteHttpExceptions: true });
+    GEMINI_LOG_.push({ model: model, code: r.getResponseCode(), ms: Date.now() - t0, quick: !!body.generationConfig.thinkingConfig }); if (GEMINI_LOG_.length > 40) GEMINI_LOG_.shift();   // so speedTest() can show where the time goes
+    return r;
   };
   for (let i = 0; i < models.length; i++) {
     if (Date.now() - started > MAX_AI_SECONDS * 1000) break;
