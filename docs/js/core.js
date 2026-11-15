@@ -1301,7 +1301,7 @@ function createCore(env) {
     const order = { requested: 0, granted: 1, '': 2 };
     return { people: ctx.rows('Users').filter(function (u) { return u.active && !u.isAdmin && (assignsTasks(ctx, u.id) || rows[u.id]); }).map(function (u) {
       const v = driveView(rows[u.id]);
-      return { userId: u.id, name: u.name, jobTitle: brief(ctx, u.id).jobTitle, status: v.status, email: v.email, folder: 'Acme / ' + niceName(u.name, 60) };
+      return { userId: u.id, name: u.name, jobTitle: brief(ctx, u.id).jobTitle, status: v.status, email: v.email, folder: 'Acme_Task_Manager / ' + niceName(u.name, 60) };
     }).sort(function (a, b) { return order[a.status] - order[b.status] || a.name.localeCompare(b.name); }) };
   } };
 
@@ -1466,7 +1466,7 @@ function createCore(env) {
     const t = doc.task, s = t.summary, L = [], join = function (a) { return (Array.isArray(a) ? a : []).filter(Boolean).join('; '); };
     const files = doc.messages.filter(function (m) { return m.file; }), voices = doc.messages.filter(function (m) { return m.type === 'voice'; });
     const days = Math.max(0, Math.round((t.closedAt - t.createdAt) / 86400000));
-    L.push('TASK ARCHIVE ' + info.code, new Array(61).join('='), 'Archive ID:   ' + info.code, 'Stored in:    Google Drive > Acme > ' + info.person + ' > ' + info.zipName, '',
+    L.push('TASK ARCHIVE ' + info.code, new Array(61).join('='), 'Archive ID:   ' + info.code, 'Stored in:    Google Drive > Acme_Task_Manager > ' + info.person + ' > ' + info.zipName, '',
       'Task:         ' + t.title, 'Purpose:      ' + (t.description ? indent(t.description) : '(no description)'),
       'Assigned by:  ' + t.creator.name, 'Done by:      ' + names(t.assignees), 'Started:      ' + t.startedText, 'Completed:    ' + t.completedText + ' (' + days + (days === 1 ? ' day' : ' days') + ')',
       'Due date:     ' + (t.dueDate || '(none)'), 'Approved by:  ' + t.approvedBy, '');
@@ -1503,7 +1503,7 @@ function createCore(env) {
   }
 
   // Filing an approved ("closed") task: everything about it becomes a zip file (more than one for a very big task), in the folder of the person who assigned it:
-  //   Google Drive > Acme > <person who assigned> > "ACM-0042 - Title - 2026-11-14.zip"
+  //   Google Drive > Acme_Task_Manager > <person who assigned> > "ACM-0042 - Title - 2026-11-14.zip"
   // inside: Summary.txt, Conversation.txt (voice messages written out), Files/ (shared documents and pictures, readable names).
   // Voice audio is not kept. The loose files are thrown away (Drive trash) only after the zip has been written and checked. The
   // ArchiveIndex row keeps just the few lines the History page shows: people, dates, documents' names, summary, the number and the place.
